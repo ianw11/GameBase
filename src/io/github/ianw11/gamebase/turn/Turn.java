@@ -20,7 +20,7 @@ public class Turn {
    /**
     * Player owning this turn
     */
-   private final Player mPlayer;
+   private final BasePlayer mPlayer;
    
    /**
     * All data collected from Player
@@ -32,7 +32,7 @@ public class Turn {
     * @param gameTurn The turn number this represents
     * @param inputMethod How this turn will collect data from the player
     */
-   public Turn(final int gameTurn, final Player player) {
+   public Turn(final int gameTurn, final BasePlayer player) {
       mCurrentTurnAction = player.getInitialTurnAction();
       mPreviousTurnActions = new Stack<TurnAction>();
       isTurnSuccessful = true;
@@ -68,6 +68,14 @@ public class Turn {
          isTurnSuccessful = updateTurnState(mCurrentTurnAction.doAction(mPlayer.getInputMethod()));
       }
       return isTurnSuccessful;
+   }
+   
+   /**
+    * Gets the player who is taking this turn.
+    * @return The Player taking this turn.
+    */
+   public final BasePlayer getPlayer() {
+      return mPlayer;
    }
    
    /**

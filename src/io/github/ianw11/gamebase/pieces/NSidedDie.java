@@ -1,6 +1,6 @@
 package io.github.ianw11.gamebase.pieces;
 
-import java.util.Random;
+import io.github.ianw11.gamebase.engine.Random;
 
 public abstract class NSidedDie {
 
@@ -10,17 +10,9 @@ public abstract class NSidedDie {
    private int mValue;
    
    public NSidedDie(final int numSides) {
-      this(numSides, 0);
-   }
-   public NSidedDie(final int numSides, final int seed) {
       mNumSides = numSides;
-      if (seed == 0) {
-         mRandom = new Random(System.currentTimeMillis());
-      } else {
-         mRandom = new Random(seed);
-      }
-      
-      roll();
+
+      mRandom = Random.getInstance();
    }
    
    /**

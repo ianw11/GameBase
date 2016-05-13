@@ -3,13 +3,13 @@ package io.github.ianw11.gamebase.turn;
 import io.github.ianw11.gamebase.io.InputMethod;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-public abstract class Player {
+public abstract class BasePlayer {
 
    private final int mId;
    private final String mName;
    private final InputMethod mInputMethod;
    
-   public Player(final int id, final String name, final InputMethod inputMethod) {
+   public BasePlayer(final int id, final String name, final InputMethod inputMethod) {
       mId = id;
       mName = name;
       mInputMethod = inputMethod;

@@ -38,7 +38,9 @@ public abstract class TurnAction {
    
    public abstract TurnActionResult doAction(InputMethod inputMethod);
    
-   public abstract TurnAction getNextAction();
+   public TurnAction getNextAction() {
+      return TERMINAL_ACTION;
+   }
    
    public abstract String getTag();
    public abstract Object getData();

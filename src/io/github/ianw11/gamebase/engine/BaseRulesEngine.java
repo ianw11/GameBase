@@ -3,7 +3,7 @@ package io.github.ianw11.gamebase.engine;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.github.ianw11.gamebase.turn.Player;
+import io.github.ianw11.gamebase.turn.BasePlayer;
 import io.github.ianw11.gamebase.turn.Turn;
 
 public abstract class BaseRulesEngine {
@@ -11,29 +11,35 @@ public abstract class BaseRulesEngine {
    /**
     * The Players currently in the game
     */
-   private final List<Player> mPlayers;
+   private List<BasePlayer> mPlayers;
+   private boolean mPlayersAreSet = false;
    
    /**
     * Stores the series of turns this game has taken.
     * 
     * This can be used for replays or restoring a specific state in the game.
     */
-   private final List<Turn> mSuccessfulTurns;
+   private List<Turn> mSuccessfulTurns;
    
    private int mPlayerTurn = 0;
    private int mRoundNumber = 1;
-   private final Player[] mPlayerOrder; 
+   private BasePlayer[] mPlayerOrder; 
    
-   public BaseRulesEngine(final List<Player> players) {
+   public BaseRulesEngine() {
+   }
+   
+   public void setPlayers(final List<BasePlayer> players) {
       if (players.size() < getMinNumberOfPlayers() ||
             players.size() > getMaxNumberOfPlayers()) {
          throw new IllegalArgumentException("Illegal number of players");
       }
-      mPlayers = new ArrayList<Player>(players);
+      mPlayers = new ArrayList<BasePlayer>(players);
       mSuccessfulTurns = new ArrayList<Turn>();
       
-      mPlayerOrder = new Player[players.size()];
+      mPlayerOrder = new BasePlayer[players.size()];
       mPlayers.toArray(mPlayerOrder);
+      
+      mPlayersAreSet = true;
    }
    
    
@@ -49,10 +55,16 @@ public abstract class BaseRulesEngine {
    protected abstract void preGameInit();
    protected abstract void preRound();
    protected abstract void postRound();
+   protected abstract void preTurn();
+   protected abstract void postTurn();
    
    public abstract boolean isGameOver();
    
    public final void runGame() {
+      if (!mPlayersAreSet) {
+         throw new IllegalStateException("Set players before starting game");
+      }
+      
       preGameInit();
       
       while (!isGameOver()) {
@@ -74,8 +86,11 @@ public abstract class BaseRulesEngine {
       
       while (!isGameOver() && mPlayerTurn != mPlayers.size()) {
          // Take a turn and if legal go to the next player
+         
+         preTurn();
          if (turn()) {
             ++mPlayerTurn;
+            postTurn();
          }
       }
       
@@ -109,7 +124,7 @@ public abstract class BaseRulesEngine {
     * Gets the current player in the game
     * @return The current player
     */
-   public final Player getCurrentPlayer() {
+   public final BasePlayer getCurrentPlayer() {
       return mPlayerOrder[mPlayerTurn];
    }
    
