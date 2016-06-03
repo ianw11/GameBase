@@ -65,7 +65,7 @@ public class Turn {
     */
    public final boolean execute() {
       while (mCurrentTurnAction != TurnAction.TERMINAL_ACTION) {
-         isTurnSuccessful = updateTurnState(mCurrentTurnAction.doAction(mPlayer.getInputMethod()));
+         isTurnSuccessful |= updateTurnState(mCurrentTurnAction.doAction(mPlayer.getInputMethod()));
       }
       return isTurnSuccessful;
    }

@@ -5,41 +5,24 @@ import java.util.List;
 
 import io.github.ianw11.gamebase.turn.BasePlayer;
 import io.github.ianw11.gamebase.turn.Turn;
+import io.github.ianw11.gamebase.turn.TurnTree;
 
 public abstract class BaseRulesEngine {
    
-   /**
-    * The Players currently in the game
-    */
-   private List<BasePlayer> mPlayers;
-   private boolean mPlayersAreSet = false;
+   private final List<GameStateListener> mGameStateListeners = new ArrayList<GameStateListener>();
    
-   /**
-    * Stores the series of turns this game has taken.
-    * 
-    * This can be used for replays or restoring a specific state in the game.
-    */
-   private List<Turn> mSuccessfulTurns;
-   
-   private int mPlayerTurn = 0;
+   private final TurnTree mTurnTree = new TurnTree();
+   private final PlayerOrderManager mPlayerOrderManager;
    private int mRoundNumber = 1;
-   private BasePlayer[] mPlayerOrder; 
    
-   public BaseRulesEngine() {
-   }
-   
-   public void setPlayers(final List<BasePlayer> players) {
+   public BaseRulesEngine(final List<BasePlayer> players) {
       if (players.size() < getMinNumberOfPlayers() ||
             players.size() > getMaxNumberOfPlayers()) {
          throw new IllegalArgumentException("Illegal number of players");
       }
-      mPlayers = new ArrayList<BasePlayer>(players);
-      mSuccessfulTurns = new ArrayList<Turn>();
       
-      mPlayerOrder = new BasePlayer[players.size()];
-      mPlayers.toArray(mPlayerOrder);
-      
-      mPlayersAreSet = true;
+      mPlayerOrderManager = new PlayerOrderManager(players);
+      addGameStateListener(mPlayerOrderManager);
    }
    
    
@@ -50,47 +33,69 @@ public abstract class BaseRulesEngine {
    protected abstract int getMinNumberOfPlayers();
    protected abstract int getMaxNumberOfPlayers();
    
+   /**
+    * The main method to get implemented.  This provides a completely built Turn and lets
+    * the implementation decide what to do with it to advance game state.
+    * @param currentTurn The completely built Turn.
+    * @return True if the Turn was legal, False otherwise.
+    */
    protected abstract boolean processTurn(final Turn currentTurn);
    
-   protected abstract void preGameInit();
-   protected abstract void preRound();
-   protected abstract void postRound();
-   protected abstract void preTurn();
-   protected abstract void postTurn();
+   /**
+    * The method that tells the round part of the game loop when to complete the round.
+    * @return True if the current round is complete
+    */
+   protected abstract boolean isRoundOver();
    
-   public abstract boolean isGameOver();
+   /**
+    * The method that ultimately ends the game loop.
+    * @return True if the game is over.
+    */
+   protected abstract boolean isGameOver();
    
+   /*
+    * MAIN PUBLIC METHOD
+    */
+   
+   public void addGameStateListener(final GameStateListener listener) {
+      mGameStateListeners.add(listener);
+   }
+   
+   public void removeGameStateListener(final GameStateListener listener) {
+      mGameStateListeners.remove(listener);
+   }
+   
+   /**
+    * Runs a game from start to finish.
+    */
    public final void runGame() {
-      if (!mPlayersAreSet) {
-         throw new IllegalStateException("Set players before starting game");
-      }
-      
-      preGameInit();
+      onPreGameInit();
       
       while (!isGameOver()) {
          // Set up game for the current round
-         preRound();
+         onPreRound();
          
          // Run the round
          runRound();
          
          if (!isGameOver()) {
-            postRound();
+            onPostRound();
          }
       }
       
    }
    
    private final void runRound() {
-      mPlayerTurn = 0;
-      
-      while (!isGameOver() && mPlayerTurn != mPlayers.size()) {
+      boolean isRoundOver = false;
+      while (!isGameOver() && !isRoundOver) {
          // Take a turn and if legal go to the next player
          
-         preTurn();
+         onPreTurn();
+         
+         // Run the turn and only call postTurn if successful
          if (turn()) {
-            ++mPlayerTurn;
-            postTurn();
+            onPostTurn();
+            isRoundOver = isRoundOver();
          }
       }
       
@@ -109,7 +114,7 @@ public abstract class BaseRulesEngine {
       
       boolean isLegalAction = processTurn(currentTurn);
       if (isLegalAction) {
-         mSuccessfulTurns.add(currentTurn);
+         mTurnTree.addTurn(currentTurn);
       }
       
       return isLegalAction;
@@ -125,47 +130,47 @@ public abstract class BaseRulesEngine {
     * @return The current player
     */
    public final BasePlayer getCurrentPlayer() {
-      return mPlayerOrder[mPlayerTurn];
+      return mPlayerOrderManager.getCurrentPlayer();
    }
    
    /**
-    * Gets the series of turns that created the current game state.
-    * 
-    * @return List of successful Turns
+    * Gets the number of players in the game
+    * @return The number of players in the game
     */
-   public final List<Turn> getTurns() {
-      return new ArrayList<Turn>(mSuccessfulTurns);
+   public final int getNumPlayers() {
+      return mPlayerOrderManager.getNumPlayers();
    }
    
    /*
-    * PUBLIC methods to manipulate game state
+    * PRIVATE lifecycle methods
     */
-   
-   public final void shufflePlayerOrder() {
-      UtilityFunctions.shuffleArray(mPlayerOrder);
+   private final void onPreGameInit() {
+      for (final GameStateListener listener : mGameStateListeners) {
+         listener.onPreGameInit();
+      }
    }
    
-   /**
-    * Completely resets player turn order to the original order
-    */
-   public final void resetPlayerOrder() {
-      resetPlayerOrder(0);
+   private final void onPreRound() {
+      for (final GameStateListener listener : mGameStateListeners) {
+         listener.onPreRound();
+      }
    }
    
-   /**
-    * Sets the player at the given index to be the first/next player and follows original order
-    * from that point.
-    * @param newStarterIndex The index/id of the new first/next player.
-    */
-   public final void resetPlayerOrder(final int newStarterIndex) {
-      final int numPlayers = mPlayers.size();
-      int currentPlayerIndex = newStarterIndex;
-      for (int i = 0; i < numPlayers; ++i) {
-         mPlayerOrder[i] = mPlayers.get(currentPlayerIndex++);
-         
-         if (currentPlayerIndex == numPlayers) {
-            currentPlayerIndex = 0;
-         }
+   private final void onPostRound() {
+      for (final GameStateListener listener : mGameStateListeners) {
+         listener.onPostRound();
+      }
+   }
+   
+   private final void onPreTurn() {
+      for (final GameStateListener listener : mGameStateListeners) {
+         listener.onPreTurn();
+      }
+   }
+   
+   private final void onPostTurn() {
+      for (final GameStateListener listener : mGameStateListeners) {
+         listener.onPostTurn();
       }
    }
 }

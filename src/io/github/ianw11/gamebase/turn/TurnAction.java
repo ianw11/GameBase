@@ -38,6 +38,10 @@ public abstract class TurnAction {
    
    public abstract TurnActionResult doAction(InputMethod inputMethod);
    
+   /**
+    * Override this method to chain actions
+    * @return
+    */
    public TurnAction getNextAction() {
       return TERMINAL_ACTION;
    }
